@@ -265,6 +265,7 @@ public class AngryGhidraPopupMenu extends ListingContextAction {
             @Override
             protected void actionPerformed(ListingActionContext context) {
                 HookCreation Hooks = new HookCreation();
+                Hooks.main();
             }
         };
 
