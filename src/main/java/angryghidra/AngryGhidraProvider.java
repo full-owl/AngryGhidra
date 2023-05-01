@@ -12,6 +12,8 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.FileDialog;
+import java.awt.Frame;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileWriter;
@@ -92,6 +94,7 @@ public class AngryGhidraProvider extends ComponentProvider {
     private JLabel lbStatus;
     private JButton btnRun;
     private JButton btnStop;
+    private JButton btnConf;
     private JSONObject angr_options;
     private Program ThisProgram;
     private String solution;
@@ -1003,6 +1006,9 @@ public class AngryGhidraProvider extends ComponentProvider {
         btnStop.setFont(new Font("SansSerif", Font.PLAIN, 12));
         btnStop.setIcon(Stopicon);
 
+        btnConf = new JButton("Export Config");
+        btnConf.setFont(new Font("SansSerif", Font.PLAIN, 12));
+
         GroupLayout gl_EndPanel = new GroupLayout(EndPanel);
         gl_EndPanel.setHorizontalGroup(
             gl_EndPanel.createParallelGroup(Alignment.LEADING)
@@ -1019,7 +1025,8 @@ public class AngryGhidraProvider extends ComponentProvider {
                             .addComponent(btnRun, GroupLayout.DEFAULT_SIZE, 116, Short.MAX_VALUE)
                             .addGap(77)
                             .addComponent(btnStop, GroupLayout.DEFAULT_SIZE, 116, Short.MAX_VALUE)
-                            .addGap(62))
+                            .addGap(62)
+                            .addComponent(btnConf, GroupLayout.DEFAULT_SIZE, 116, Short.MAX_VALUE))
                         .addGroup(gl_EndPanel.createSequentialGroup()
                             .addGap(10)
                             .addComponent(StatusLabel, GroupLayout.DEFAULT_SIZE, 495, Short.MAX_VALUE)))
@@ -1035,7 +1042,8 @@ public class AngryGhidraProvider extends ComponentProvider {
                     .addGap(10)
                     .addGroup(gl_EndPanel.createParallelGroup(Alignment.BASELINE)
                         .addComponent(btnRun, GroupLayout.PREFERRED_SIZE, 21, GroupLayout.PREFERRED_SIZE)
-                        .addComponent(btnStop, GroupLayout.PREFERRED_SIZE, 21, GroupLayout.PREFERRED_SIZE))
+                        .addComponent(btnStop, GroupLayout.PREFERRED_SIZE, 21, GroupLayout.PREFERRED_SIZE)
+                        .addComponent(btnConf, GroupLayout.PREFERRED_SIZE, 21, GroupLayout.PREFERRED_SIZE))
                     .addPreferredGap(ComponentPlacement.RELATED)
                     .addComponent(lbStatus, GroupLayout.PREFERRED_SIZE, 13, GroupLayout.PREFERRED_SIZE)
                     .addPreferredGap(ComponentPlacement.RELATED)
@@ -1151,130 +1159,11 @@ public class AngryGhidraProvider extends ComponentProvider {
                 StatusLabel.setText("[+] Angr options selection");
                 StatusLabelFound.setText("");
                 isTerminated = false;
-                angr_options = new JSONObject();
-
-                Boolean auto_load_libs = false;
-                if (chckbxAutoloadlibs.isSelected()) {
-                    auto_load_libs = true;
-                }
-
-                angr_options.put("auto_load_libs", auto_load_libs);
-
-                if (chckbxBlankState.isSelected()) {
-                    if (TFBlankState.getText().matches("0x[0-9A-Fa-f]+") == false) {
-                        TFBlankState.setBorder(new LineBorder(Color.red, 1));
-                        StatusLabel.setText("[-] Error: please, enter the correct hex value.");
-                        return;
-                    }
-                    TFBlankState.setBorder(Classic_border);
-                    String blank_state = TFBlankState.getText();
-                    angr_options.put("blank_state", blank_state);
-                }
-                if (TFFind.getText().matches("0x[0-9A-Fa-f]+") == false) {
-                    TFFind.setBorder(new LineBorder(Color.red, 1));
-                    StatusLabel.setText("[-] Error: please, enter the correct hex value without spaces.");
+                
+                JSONObject angr_options = angrOptions(chckbxAutoloadlibs,Classic_border,chckbxArg);
+                if(angr_options == null) {
                     return;
                 }
-                TFFind.setBorder(Classic_border);
-                String find = TFFind.getText();
-
-                angr_options.put("find", find);
-                
-                if (chckbxAvoidAddresses.isSelected()) {
-                    if (textArea.getText().replaceAll("\\s+", "").matches("[0x0-9a-fA-F, /,]+") == false) {
-                        textArea.setBorder(new LineBorder(Color.red, 1));
-                        StatusLabel.setText("[-] Error: please, enter the correct hex values separated by comma.");
-                        return;
-                    }
-                    textArea.setBorder(UIManager.getLookAndFeel().getDefaults().getBorder("TextArea.border"));
-                    String avoid = textArea.getText().replaceAll("\\s+", "");
-                    angr_options.put("avoid", avoid);
-                }
-                if (chckbxArg.isSelected()) {
-                    if (TFArglen.getText().isEmpty() == false) {
-                        JSONObject ArgDetails = new JSONObject();
-                        ArgDetails.put("1", TFArglen.getText());
-                        for (int i = 0; i < TFArgs.size(); i++) {
-                            if (TFArglen.getText().isEmpty() == false) {
-                                ArgDetails.put(Integer.toString(i + 2), TFArglen.getText());
-                            }
-                        }
-                        angr_options.put("Arguments", ArgDetails);
-                    }
-                }
-
-                if (TFsymbmem_addr.getText().isEmpty() == false & TFsymbmem_len.getText().isEmpty() == false) {
-                    JSONObject MemDetails = new JSONObject();
-                    MemDetails.put(TFsymbmem_addr.getText(), TFsymbmem_len.getText());
-                    for (int i = 0; i < TFAddrs.size(); i++) {
-                        if (TFAddrs.get(i).getText().isEmpty() == false & TFLens.get(i).getText().isEmpty() == false) {
-                            MemDetails.put(TFAddrs.get(i).getText(), TFLens.get(i).getText());
-                        }
-                    }
-                    angr_options.put("Memory", MemDetails);
-                }
-
-                if (TFstore_addr.getText().isEmpty() == false & TFstore_val.getText().isEmpty() == false) {
-                    JSONObject MemStoreDetails = new JSONObject();
-                    MemStoreDetails.put(TFstore_addr.getText(), TFstore_val.getText());
-                    for (int i = 0; i < TFStoreAddrs.size(); i++) {
-                        if (TFStoreAddrs.get(i).getText().isEmpty() == false & TFStoreVals.get(i).getText().isEmpty() == false) {
-                            MemStoreDetails.put(TFStoreAddrs.get(i).getText(), TFStoreVals.get(i).getText());
-                        }
-                    }
-                    angr_options.put("Store", MemStoreDetails);
-                }
-
-                if (TFReg1.getText().isEmpty() == false & TFVal1.getText().isEmpty() == false & (TFVal1.getText().matches("0x[0-9A-Fa-f]+") == true ||
-                        TFVal1.getText().matches("[0-9]+") == true || TFVal1.getText().contains("sv"))) {
-                    JSONObject RegDetails = new JSONObject();
-                    RegDetails.put(TFReg1.getText(), TFVal1.getText());
-                    for (int i = 0; i < TFregs.size(); i++) {
-                        if (TFregs.get(i).getText().isEmpty() == false & TFVals.get(i).getText().isEmpty() == false & (TFVals.get(i).getText().matches("0x[0-9A-Fa-f]+") == true ||
-                                TFVals.get(i).getText().matches("[0-9]+") == true || TFVals.get(i).getText().contains("sv"))) {
-                            RegDetails.put(TFregs.get(i).getText(), TFVals.get(i).getText());
-                        }
-                    }
-                    angr_options.put("Registers", RegDetails);
-                }
-
-                if (Hook.isEmpty() == false) {
-                    JSONArray HookList = new JSONArray();
-                    for (Entry < String[], String[][] > entry: Hook.entrySet()) {
-                        JSONObject HookDetails = new JSONObject();
-                        String[] HookOptions = entry.getKey();
-                        String HookAddress = HookOptions[0];
-                        HookDetails.put("Length", HookOptions[1]);
-                        String[][] Regs = entry.getValue();
-                        for (int i = 0; i < Regs[0].length; i++) {
-                            if (Regs[0][i] != null & Regs[1][i] != null) {
-                                HookDetails.put(Regs[0][i], Regs[1][i]);
-                            }
-                        }
-                        JSONObject NewHook = new JSONObject();
-                        NewHook.put(HookAddress, HookDetails);
-                        HookList.put(NewHook);
-                    }
-                    angr_options.put("Hooks", HookList);
-                }
-
-                panel.revalidate();
-                String binary_path = ThisProgram.getExecutablePath();
-
-                if (System.getProperty("os.name").contains("Windows")) {
-                    binary_path = binary_path.replaceFirst("/", "");
-                    binary_path = binary_path.replace("/", "\\");
-                }
-                angr_options.put("binary_file", binary_path);
-                
-                if (ThisProgram.getExecutableFormat().contains("Raw Binary")) {
-                    JSONObject RawBinary= new JSONObject();                    	
-                    String Arch = ThisProgram.getLanguage().toString().substring(0, ThisProgram.getLanguage().toString().indexOf("/"));
-                    RawBinary.put("Arch", Arch);                    	
-                    RawBinary.put("Base", "0x" + Long.toHexString(ThisProgram.getMinAddress().getOffset()));                    	
-                    angr_options.put("Raw Binary", RawBinary);
-                }
-                
                 File angrfile = new File(TmpDir + "angr_options.json");
                 if (angrfile.exists()) {
                     angrfile.delete();
@@ -1288,6 +1177,169 @@ public class AngryGhidraProvider extends ComponentProvider {
                 angrInProgress(angrfile);                
             }
         });
+        btnConf.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {   
+                JSONObject angr_options = angrOptions(chckbxAutoloadlibs,Classic_border,chckbxArg);
+                if(angr_options == null) {
+                    return;
+                }
+                FileDialog fd = new FileDialog((Frame)null, "Save angr config", FileDialog.SAVE);
+                fd.setFile("*.json");
+                fd.setVisible(true);
+                String fname = fd.getFile();
+                File angrfile = new File(fname);
+                if (angrfile.exists()) {
+                    angrfile.delete();
+                }
+                fd.dispose();
+                try {
+                    FileWriter file = new FileWriter(fname);
+                    file.write(angr_options.toString());
+                    file.flush();
+                    file.close();
+                    ConsoleService cs = dockingTool.getService(ConsoleService.class);
+                    cs.println("Angr Config written to " + fname);
+                    String spath = null;
+                    try {
+                        spath = new File(AngryGhidraProvider.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getPath();
+                    } catch (URISyntaxException e2) {
+                        e2.printStackTrace();
+                    }
+                    spath = (spath.substring(0, spath.indexOf("lib")) + "angryghidra_script" + File.separator + "angryghidra.py");
+                    File Scriptfile = new File(spath);
+                    String script_path = Scriptfile.getAbsolutePath();
+                    cs.println("Run it with: python \"" + script_path + "\" \"" + fname + "\"");
+                } catch (Exception e1) {};
+
+            }
+        });
+    }
+
+    private JSONObject angrOptions(JCheckBox chckbxAutoloadlibs,Border Classic_border,JCheckBox chckbxArg) {
+        angr_options = new JSONObject();
+
+        Boolean auto_load_libs = false;
+        if (chckbxAutoloadlibs.isSelected()) {
+            auto_load_libs = true;
+        }
+
+        angr_options.put("auto_load_libs", auto_load_libs);
+
+        if (chckbxBlankState.isSelected()) {
+            if (TFBlankState.getText().matches("0x[0-9A-Fa-f]+") == false) {
+                TFBlankState.setBorder(new LineBorder(Color.red, 1));
+                StatusLabel.setText("[-] Error: please, enter the correct hex value.");
+                return null;
+            }
+            TFBlankState.setBorder(Classic_border);
+            String blank_state = TFBlankState.getText();
+            angr_options.put("blank_state", blank_state);
+        }
+        if (TFFind.getText().matches("0x[0-9A-Fa-f]+") == false) {
+            TFFind.setBorder(new LineBorder(Color.red, 1));
+            StatusLabel.setText("[-] Error: please, enter the correct hex value without spaces.");
+            return null;
+        }
+        TFFind.setBorder(Classic_border);
+        String find = TFFind.getText();
+
+        angr_options.put("find", find);
+        
+        if (chckbxAvoidAddresses.isSelected()) {
+            if (textArea.getText().replaceAll("\\s+", "").matches("[0x0-9a-fA-F, /,]+") == false) {
+                textArea.setBorder(new LineBorder(Color.red, 1));
+                StatusLabel.setText("[-] Error: please, enter the correct hex values separated by comma.");
+                return null;
+            }
+            textArea.setBorder(UIManager.getLookAndFeel().getDefaults().getBorder("TextArea.border"));
+            String avoid = textArea.getText().replaceAll("\\s+", "");
+            angr_options.put("avoid", avoid);
+        }
+        if (chckbxArg.isSelected()) {
+            if (TFArglen.getText().isEmpty() == false) {
+                JSONObject ArgDetails = new JSONObject();
+                ArgDetails.put("1", TFArglen.getText());
+                for (int i = 0; i < TFArgs.size(); i++) {
+                    if (TFArglen.getText().isEmpty() == false) {
+                        ArgDetails.put(Integer.toString(i + 2), TFArglen.getText());
+                    }
+                }
+                angr_options.put("Arguments", ArgDetails);
+            }
+        }
+
+        if (TFsymbmem_addr.getText().isEmpty() == false & TFsymbmem_len.getText().isEmpty() == false) {
+            JSONObject MemDetails = new JSONObject();
+            MemDetails.put(TFsymbmem_addr.getText(), TFsymbmem_len.getText());
+            for (int i = 0; i < TFAddrs.size(); i++) {
+                if (TFAddrs.get(i).getText().isEmpty() == false & TFLens.get(i).getText().isEmpty() == false) {
+                    MemDetails.put(TFAddrs.get(i).getText(), TFLens.get(i).getText());
+                }
+            }
+            angr_options.put("Memory", MemDetails);
+        }
+
+        if (TFstore_addr.getText().isEmpty() == false & TFstore_val.getText().isEmpty() == false) {
+            JSONObject MemStoreDetails = new JSONObject();
+            MemStoreDetails.put(TFstore_addr.getText(), TFstore_val.getText());
+            for (int i = 0; i < TFStoreAddrs.size(); i++) {
+                if (TFStoreAddrs.get(i).getText().isEmpty() == false & TFStoreVals.get(i).getText().isEmpty() == false) {
+                    MemStoreDetails.put(TFStoreAddrs.get(i).getText(), TFStoreVals.get(i).getText());
+                }
+            }
+            angr_options.put("Store", MemStoreDetails);
+        }
+
+        if (TFReg1.getText().isEmpty() == false & TFVal1.getText().isEmpty() == false & (TFVal1.getText().matches("0x[0-9A-Fa-f]+") == true ||
+                TFVal1.getText().matches("[0-9]+") == true || TFVal1.getText().contains("sv"))) {
+            JSONObject RegDetails = new JSONObject();
+            RegDetails.put(TFReg1.getText(), TFVal1.getText());
+            for (int i = 0; i < TFregs.size(); i++) {
+                if (TFregs.get(i).getText().isEmpty() == false & TFVals.get(i).getText().isEmpty() == false & (TFVals.get(i).getText().matches("0x[0-9A-Fa-f]+") == true ||
+                        TFVals.get(i).getText().matches("[0-9]+") == true || TFVals.get(i).getText().contains("sv"))) {
+                    RegDetails.put(TFregs.get(i).getText(), TFVals.get(i).getText());
+                }
+            }
+            angr_options.put("Registers", RegDetails);
+        }
+
+        if (Hook.isEmpty() == false) {
+            JSONArray HookList = new JSONArray();
+            for (Entry < String[], String[][] > entry: Hook.entrySet()) {
+                JSONObject HookDetails = new JSONObject();
+                String[] HookOptions = entry.getKey();
+                String HookAddress = HookOptions[0];
+                HookDetails.put("Length", HookOptions[1]);
+                String[][] Regs = entry.getValue();
+                for (int i = 0; i < Regs[0].length; i++) {
+                    if (Regs[0][i] != null & Regs[1][i] != null) {
+                        HookDetails.put(Regs[0][i], Regs[1][i]);
+                    }
+                }
+                JSONObject NewHook = new JSONObject();
+                NewHook.put(HookAddress, HookDetails);
+                HookList.put(NewHook);
+            }
+            angr_options.put("Hooks", HookList);
+        }
+
+        panel.revalidate();
+        String binary_path = ThisProgram.getExecutablePath();
+
+        if (System.getProperty("os.name").contains("Windows")) {
+            binary_path = binary_path.replaceFirst("/", "");
+            binary_path = binary_path.replace("/", "\\");
+        }
+        angr_options.put("binary_file", binary_path);
+        
+        if (ThisProgram.getExecutableFormat().contains("Raw Binary")) {
+            JSONObject RawBinary= new JSONObject();                    	
+            String Arch = ThisProgram.getLanguage().toString().substring(0, ThisProgram.getLanguage().toString().indexOf("/"));
+            RawBinary.put("Arch", Arch);                    	
+            RawBinary.put("Base", "0x" + Long.toHexString(ThisProgram.getMinAddress().getOffset()));                    	
+            angr_options.put("Raw Binary", RawBinary);
+        }
+        return angr_options;
     }
 
     protected void angrInProgress(File angrfile) {
