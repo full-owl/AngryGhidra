@@ -259,6 +259,23 @@ public class AngryGhidraPopupMenu extends ListingContextAction {
             MenuName,
             "Apply Patched Bytes"}, null, Group_Name));
         tool.addAction(ApplyPatchedBytes);
+
+        ListingContextAction HookHere = new ListingContextAction("Hook Here", getName()) {
+
+            @Override
+            protected void actionPerformed(ListingActionContext context) {
+                Hooks = new HookCreation();
+            }
+        };
+
+        HookHere.setPopupMenuData(new MenuData(new String[] {
+            MenuName,
+            "Hook",
+            "Here"
+        }, null, Group_Name));
+
+        tool.addAction(HookHere);
+    
     }
 
     public static void UnSetColor(Address address) {
