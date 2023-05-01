@@ -8,6 +8,10 @@ EXPLORE_OPT = {}  # Explore options
 REGISTERS = []  # Main registers of your binary
 SYMVECTORS = []
 
+def visualize(*args, **kwargs):
+	stashes = args[0].stashes
+	for simstate in stashes["active"]:
+		print(f'Fxn: {hex(simstate.callstack.current_function_address)}, stdin={simstate.posix.dumps(0)}')
 
 def hook_function(state):
     for object in EXPLORE_OPT["Hooks"]:
@@ -123,7 +127,7 @@ def main(file):
     else:
         simgr.use_technique(angr.exploration_techniques.Explorer(find=find))
 
-    simgr.run()
+    simgr.run(step_func=visualize)
 
     if simgr.found:
         found_path = simgr.found[0]

@@ -51,6 +51,8 @@ import docking.widgets.textfield.IntegerTextField;
 import ghidra.program.model.address.AddressFactory;
 import ghidra.program.model.listing.Program;
 import resources.ResourceManager;
+import ghidra.util.Msg;
+import ghidra.app.services.ConsoleService;
 
 public class AngryGhidraProvider extends ComponentProvider {
     private JPanel panel;
@@ -1359,12 +1361,21 @@ public class AngryGhidraProvider extends ComponentProvider {
     public int runAngr(String pythonVersion, String script_path, String angrfile_path) {
         solution = "";
         insntrace = "";
+        ConsoleService cs = dockingTool.getService(ConsoleService.class);
+        cs.println("AngryGhidra: Starting angr with " + angrfile_path);
         ProcessBuilder pb = new ProcessBuilder(pythonVersion, script_path, angrfile_path);
         try {
             Process p = pb.start();
             BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            BufferedReader err_reader = new BufferedReader(new InputStreamReader(p.getErrorStream()));
             String line = "";
+            String err_line = "";
             while ((line = reader.readLine()) != null & isTerminated == false) {
+                cs.println(line);
+                // print err line
+                if((err_line = err_reader.readLine()) != null) {
+                    cs.println(err_line);
+                }
                 if (line.contains("Trace:")) {
                     insntrace = line.substring(6);
                 } else {
